@@ -198,6 +198,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install dependencies
+        run: pip install pyyaml
+
       - name: Test install script simulation
         run: |
           # Simulate installing a skill by copying to a temp directory
