@@ -1,9 +1,10 @@
 ---
 name: subagent-driven-development
 description: Use when executing implementation plans with independent tasks in the current session
-author: obra
-repo: github.com/obra/superpowers
-tags: [agents, development, workflow]
+metadata:
+  author: obra
+  repo: github.com/obra/superpowers
+  tags: [agents, development, workflow]
 ---
 
 # Subagent-Driven Development

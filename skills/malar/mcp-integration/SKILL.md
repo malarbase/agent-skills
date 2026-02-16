@@ -1,9 +1,10 @@
 ---
 name: mcp-integration
 description: How to use the Floorplan MCP server for AI-powered floorplan manipulation. Use when working with MCP tools, AI integrations, or programmatic floorplan modifications.
-author: malar
-repo: github.com/malar/mermaid-floorplan
-tags: [mcp, ai, integration, project-specific]
+metadata:
+  author: malar
+  repo: github.com/malar/mermaid-floorplan
+  tags: [mcp, ai, integration, project-specific]
 ---
 
 # MCP Server Integration

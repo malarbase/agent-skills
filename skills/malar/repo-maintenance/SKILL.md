@@ -1,9 +1,10 @@
 ---
 name: repo-maintenance
 description: How to maintain the mermaid-floorplan monorepo. Use when working with building, testing, grammar changes, image export, OpenSpec workflow, SpecLife commands, development servers, or troubleshooting build issues.
-author: malar
-repo: github.com/malar/mermaid-floorplan
-tags: [maintenance, monorepo, build, project-specific]
+metadata:
+  author: malar
+  repo: github.com/malar/mermaid-floorplan
+  tags: [maintenance, monorepo, build, project-specific]
 ---
 
 # Repo Maintenance

@@ -1,9 +1,10 @@
 ---
 name: test-driven-development
 description: Use when implementing any feature or bugfix, before writing implementation code
-author: obra
-repo: github.com/obra/superpowers
-tags: [tdd, testing, workflow]
+metadata:
+  author: obra
+  repo: github.com/obra/superpowers
+  tags: [tdd, testing, workflow]
 ---
 
 # Test-Driven Development (TDD)

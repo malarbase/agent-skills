@@ -1,9 +1,10 @@
 ---
 name: writing-skills
 description: Use when creating new skills, editing existing skills, or verifying skills work before deployment
-author: obra
-repo: github.com/obra/superpowers
-tags: [skills, development, meta]
+metadata:
+  author: obra
+  repo: github.com/obra/superpowers
+  tags: [skills, development, meta]
 ---
 
 # Writing Skills
