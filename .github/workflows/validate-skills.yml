@@ -87,105 +87,33 @@ jobs:
       - name: Install dependencies
         run: pip install pyyaml
 
-      - name: Validate frontmatter
+      - name: Validate skills
         run: |
-          python3 << 'EOF'
-          import os
-          import sys
-          import yaml
-          import re
+          echo "Validating all skills (spec + repo checks)..."
+          errors=0
+          total=0
 
-          REQUIRED_FIELDS = ['name', 'description']
-          OPTIONAL_FIELDS = ['author', 'repo', 'license', 'tags']
-          NAME_PATTERN = re.compile(r'^[a-z0-9-]+$')
+          for skill_dir in $(find skills -name SKILL.md -exec dirname {} \;); do
+            total=$((total + 1))
+            rel=$(echo "$skill_dir" | sed 's|^skills/||')
+            if python3 skills/malar/skill-curator/scripts/repo_validate.py "$skill_dir" --repo-root . -q; then
+              echo "  OK: $rel"
+            else
+              echo "  FAIL: $rel"
+              python3 skills/malar/skill-curator/scripts/repo_validate.py "$skill_dir" --repo-root .
+              errors=$((errors + 1))
+            fi
+          done
 
-          errors = []
-          warnings = []
-          skills_checked = 0
+          echo ""
+          echo "Checked $total skill(s)"
 
-          for root, dirs, files in os.walk('skills'):
-              if 'SKILL.md' in files:
-                  skill_path = os.path.join(root, 'SKILL.md')
-                  rel_path = skill_path
-                  skills_checked += 1
+          if [ $errors -gt 0 ]; then
+            echo "Found $errors validation error(s)"
+            exit 1
+          fi
 
-                  with open(skill_path, 'r') as f:
-                      content = f.read()
-
-                  # Extract frontmatter
-                  if not content.startswith('---'):
-                      errors.append(f"{rel_path}: Missing YAML frontmatter (must start with ---)")
-                      continue
-
-                  parts = content.split('---', 2)
-                  if len(parts) < 3:
-                      errors.append(f"{rel_path}: Invalid frontmatter format (missing closing ---)")
-                      continue
-
-                  frontmatter_text = parts[1].strip()
-
-                  try:
-                      frontmatter = yaml.safe_load(frontmatter_text)
-                  except yaml.YAMLError as e:
-                      errors.append(f"{rel_path}: Invalid YAML in frontmatter: {e}")
-                      continue
-
-                  if not isinstance(frontmatter, dict):
-                      errors.append(f"{rel_path}: Frontmatter must be a YAML mapping")
-                      continue
-
-                  # Check required fields
-                  for field in REQUIRED_FIELDS:
-                      if field not in frontmatter:
-                          errors.append(f"{rel_path}: Missing required field '{field}'")
-                      elif not frontmatter[field]:
-                          errors.append(f"{rel_path}: Field '{field}' is empty")
-
-                  # Validate name format
-                  if 'name' in frontmatter and frontmatter['name']:
-                      name = frontmatter['name']
-                      if len(name) > 64:
-                          errors.append(f"{rel_path}: 'name' exceeds 64 characters")
-                      if not NAME_PATTERN.match(name):
-                          errors.append(f"{rel_path}: 'name' must be lowercase with hyphens only, got '{name}'")
-
-                  # Validate description length
-                  if 'description' in frontmatter and frontmatter['description']:
-                      desc = frontmatter['description']
-                      if len(desc) > 1024:
-                          errors.append(f"{rel_path}: 'description' exceeds 1024 characters")
-
-                  # Check for recommended optional fields
-                  if 'author' not in frontmatter:
-                      warnings.append(f"{rel_path}: Missing recommended field 'author'")
-                  if 'repo' not in frontmatter:
-                      warnings.append(f"{rel_path}: Missing recommended field 'repo'")
-
-                  # Validate tags format
-                  if 'tags' in frontmatter:
-                      tags = frontmatter['tags']
-                      if not isinstance(tags, list):
-                          errors.append(f"{rel_path}: 'tags' must be a list")
-                      elif not all(isinstance(t, str) for t in tags):
-                          errors.append(f"{rel_path}: All tags must be strings")
-
-                  print(f"Checked: {rel_path}")
-
-          print(f"\nChecked {skills_checked} skill(s)")
-
-          if warnings:
-              print(f"\nWarnings ({len(warnings)}):")
-              for w in warnings:
-                  print(f"  - {w}")
-
-          if errors:
-              print(f"\nErrors ({len(errors)}):")
-              for e in errors:
-                  print(f"  - {e}")
-              sys.exit(1)
-
-          print("\nAll frontmatter validation passed!")
-          EOF
+          echo "All validation passed!"
 
   test-install:
     name: Test Skill Installation
@@ -236,51 +164,3 @@ jobs:
           rm -rf "$INSTALL_DIR"
           echo "Installation test passed!"
 
-      - name: Verify skill can be parsed
-        run: |
-          python3 << 'EOF'
-          import os
-          import yaml
-          import sys
-
-          # Test that we can parse all skills programmatically
-          skills = []
-          for root, dirs, files in os.walk('skills'):
-              if 'SKILL.md' in files:
-                  skill_path = os.path.join(root, 'SKILL.md')
-                  parts = root.split(os.sep)
-
-                  # Extract author and skill name from path
-                  if len(parts) >= 3:  # skills/author/skill-name
-                      author = parts[1]
-                      skill_name = parts[2]
-
-                      with open(skill_path, 'r') as f:
-                          content = f.read()
-
-                      # Parse frontmatter
-                      if content.startswith('---'):
-                          fm_parts = content.split('---', 2)
-                          if len(fm_parts) >= 3:
-                              try:
-                                  frontmatter = yaml.safe_load(fm_parts[1])
-                                  skills.append({
-                                      'path': f"{author}/{skill_name}",
-                                      'name': frontmatter.get('name'),
-                                      'author': frontmatter.get('author'),
-                                      'description': frontmatter.get('description', '')[:50] + '...'
-                                  })
-                              except yaml.YAMLError as e:
-                                  print(f"ERROR parsing {skill_path}: {e}")
-                                  sys.exit(1)
-
-          print(f"Successfully parsed {len(skills)} skill(s):\n")
-          for s in sorted(skills, key=lambda x: x['path']):
-              print(f"  {s['path']}: {s['name']} (by {s['author']})")
-
-          if len(skills) == 0:
-              print("ERROR: No skills found")
-              sys.exit(1)
-
-          print("\nAll skills are parseable!")
-          EOF

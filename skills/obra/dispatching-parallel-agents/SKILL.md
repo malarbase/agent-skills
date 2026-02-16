@@ -1,9 +1,14 @@
 ---
 name: dispatching-parallel-agents
-description: Use when facing 2+ independent tasks that can be worked on without shared state or sequential dependencies
-author: obra
-repo: github.com/obra/superpowers
-tags: [agents, parallelization, workflow]
+description: Use when facing 2+ independent tasks that can be worked on without shared
+  state or sequential dependencies
+metadata:
+  tags:
+  - agents
+  - parallelization
+  - workflow
+  author: obra
+  repo: github.com/obra/superpowers
 ---
 
 # Dispatching Parallel Agents

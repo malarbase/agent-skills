@@ -1,9 +1,13 @@
 ---
 name: requesting-code-review
-description: Use when completing tasks, implementing major features, or before merging to verify work meets requirements
-author: obra
-repo: github.com/obra/superpowers
-tags: [code-review, workflow]
+description: Use when completing tasks, implementing major features, or before merging
+  to verify work meets requirements
+metadata:
+  tags:
+  - code-review
+  - workflow
+  author: obra
+  repo: github.com/obra/superpowers
 ---
 
 # Requesting Code Review

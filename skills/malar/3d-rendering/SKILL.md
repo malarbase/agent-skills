@@ -1,9 +1,15 @@
 ---
 name: 3d-rendering
-description: How to generate 3D visualizations from floorplan DSL files. Use when working with 3D exports, isometric views, or perspective rendering.
-author: malar
-repo: github.com/malar/mermaid-floorplan
-tags: [3d, rendering, visualization, project-specific]
+description: How to generate 3D visualizations from floorplan DSL files. Use when
+  working with 3D exports, isometric views, or perspective rendering.
+metadata:
+  tags:
+  - 3d
+  - rendering
+  - visualization
+  - project-specific
+  author: malar
+  repo: github.com/malar/mermaid-floorplan
 ---
 
 # 3D Rendering

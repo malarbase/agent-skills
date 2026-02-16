@@ -1,9 +1,14 @@
 ---
 name: receiving-code-review
-description: Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation
-author: obra
-repo: github.com/obra/superpowers
-tags: [code-review, workflow]
+description: Use when receiving code review feedback, before implementing suggestions,
+  especially if feedback seems unclear or technically questionable - requires technical
+  rigor and verification, not performative agreement or blind implementation
+metadata:
+  tags:
+  - code-review
+  - workflow
+  author: obra
+  repo: github.com/obra/superpowers
 ---
 
 # Code Review Reception

@@ -1,9 +1,14 @@
 ---
 name: executing-plans
-description: Use when you have a written implementation plan to execute in a separate session with review checkpoints
-author: obra
-repo: github.com/obra/superpowers
-tags: [planning, execution, workflow]
+description: Use when you have a written implementation plan to execute in a separate
+  session with review checkpoints
+metadata:
+  tags:
+  - planning
+  - execution
+  - workflow
+  author: obra
+  repo: github.com/obra/superpowers
 ---
 
 # Executing Plans

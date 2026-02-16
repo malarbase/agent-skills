@@ -1,9 +1,15 @@
 ---
 name: brainstorming
-description: "You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation."
-author: obra
-repo: github.com/obra/superpowers
-tags: [planning, design, workflow]
+description: You MUST use this before any creative work - creating features, building
+  components, adding functionality, or modifying behavior. Explores user intent, requirements
+  and design before implementation.
+metadata:
+  tags:
+  - planning
+  - design
+  - workflow
+  author: obra
+  repo: github.com/obra/superpowers
 ---
 
 # Brainstorming Ideas Into Designs

@@ -108,7 +108,12 @@ def _skill_name_from_path(path: str) -> str:
 # ── Commands ────────────────────────────────────────────────────────────
 
 
-def cmd_import(source: str, author: str | None, ref: str | None = None) -> None:
+def cmd_import(
+    source: str,
+    author: str | None,
+    ref: str | None = None,
+    tags: list[str] | None = None,
+) -> None:
     """Fetch skill from source and stage locally."""
     parsed = _parse_source(source)
     if ref and parsed["type"] == "github":
@@ -137,9 +142,9 @@ def cmd_import(source: str, author: str | None, ref: str | None = None) -> None:
         os.makedirs(os.path.dirname(stage_dest), exist_ok=True)
         shutil.copytree(skill_dir, stage_dest)
 
-        # Ensure metadata
+        # Ensure metadata (author, repo, tags under metadata:)
         source_repo = f"github.com/{parsed['owner']}/{parsed['repo']}" if parsed["type"] == "github" else None
-        skill_utils.ensure_metadata(stage_dest, author, source_repo)
+        skill_utils.ensure_metadata(stage_dest, author, source_repo, tags=tags)
 
     print(f"Staged: {author}/{skill_name} → {stage_dest}")
     print("Run 'curator.py validate' to check, then 'curator.py ship' to publish.")
@@ -264,17 +269,27 @@ def cmd_ship(draft: bool = False, dry_run: bool = False) -> None:
         fork_owner = fork_name.split("/")[0]
         head = f"{fork_owner}:{branch}"
 
-    # Create PR
-    body_parts = ["## Skills added\n"]
+    # Build PR body from template if available
+    pr_template_path = os.path.join(clone_dest, ".github", "pull_request_template.md")
+    skills_lines = []
     for author, name, _ in staged:
         meta = skill_utils.extract_metadata(os.path.join(clone_dest, "skills", author, name))
         desc = meta.get("description", "No description")
-        body_parts.append(f"- **{author}/{name}**: {desc}")
+        skills_lines.append(f"- **{author}/{name}**: {desc}")
+    skills_section = "\n".join(skills_lines)
+
+    if os.path.isfile(pr_template_path):
+        with open(pr_template_path, "r") as f:
+            body = f.read()
+        body = body.replace("<!-- What skills are being added/updated? -->", pr_title)
+        body = body.replace("<!-- List of skills with descriptions -->", skills_section)
+    else:
+        body = f"## Summary\n\n{pr_title}\n\n## Skills\n\n{skills_section}\n"
 
     pr_url = gh.create_pr(
         repo=TARGET_REPO,
         title=pr_title,
-        body="\n".join(body_parts),
+        body=body,
         head=head,
         draft=draft,
     )
@@ -401,6 +416,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_import.add_argument("source", help="GitHub URL, owner/repo:path, or local path")
     p_import.add_argument("--author", help="Author namespace (default: $USER)")
     p_import.add_argument("--ref", help="Git ref for GitHub sources (default: main)")
+    p_import.add_argument("--tags", help="Comma-separated tags (default: derived from skill name)")
 
     # validate
     p_validate = sub.add_parser("validate", help="Check skill structure and metadata")
@@ -437,7 +453,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         if args.command == "import":
-            cmd_import(args.source, args.author, args.ref)
+            tags = [t.strip() for t in args.tags.split(",")] if args.tags else None
+            cmd_import(args.source, args.author, args.ref, tags=tags)
         elif args.command == "validate":
             cmd_validate(args.path)
         elif args.command == "ship":

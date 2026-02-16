@@ -1,9 +1,15 @@
 ---
 name: finishing-a-development-branch
-description: Use when implementation is complete, all tests pass, and you need to decide how to integrate the work - guides completion of development work by presenting structured options for merge, PR, or cleanup
-author: obra
-repo: github.com/obra/superpowers
-tags: [git, workflow, completion]
+description: Use when implementation is complete, all tests pass, and you need to
+  decide how to integrate the work - guides completion of development work by presenting
+  structured options for merge, PR, or cleanup
+metadata:
+  tags:
+  - git
+  - workflow
+  - completion
+  author: obra
+  repo: github.com/obra/superpowers
 ---
 
 # Finishing a Development Branch

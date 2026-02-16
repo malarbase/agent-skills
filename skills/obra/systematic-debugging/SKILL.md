@@ -1,9 +1,14 @@
 ---
 name: systematic-debugging
-description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes
-author: obra
-repo: github.com/obra/superpowers
-tags: [debugging, testing, workflow]
+description: Use when encountering any bug, test failure, or unexpected behavior,
+  before proposing fixes
+metadata:
+  tags:
+  - debugging
+  - testing
+  - workflow
+  author: obra
+  repo: github.com/obra/superpowers
 ---
 
 # Systematic Debugging

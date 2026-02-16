@@ -1,9 +1,17 @@
 ---
 name: skill-curator
-description: Publish and maintain curated skills in the agent-skills repository. Handles importing skills from GitHub repos, local paths, or URLs, validating structure, creating PRs, and landing changes. Use when publishing skills, curating skills, shipping skills to the agent-skills repo, or managing the malarbase/agent-skills inventory.
-author: malar
-repo: github.com/malarbase/agent-skills
-tags: [curator, skills, publishing]
+description: Publish and maintain curated skills in the agent-skills repository. Handles
+  importing skills from GitHub repos, local paths, or URLs, validating structure,
+  creating PRs, and landing changes. Use when publishing skills, curating skills,
+  shipping skills to the agent-skills repo, or managing the malarbase/agent-skills
+  inventory.
+metadata:
+  tags:
+  - curator
+  - skills
+  - publishing
+  author: malar
+  repo: github.com/malarbase/agent-skills
 ---
 
 # Skill Curator
@@ -26,7 +34,7 @@ Publish curated skills to the `malarbase/agent-skills` repository. This is the "
 
 All scripts live in `scripts/` and require Python 3.10+. Push/PR operations require `gh` CLI.
 
-- `scripts/curator.py import <source> [--author <author>]` — stage a skill locally
+- `scripts/curator.py import <source> [--author <author>] [--tags <tags>]` — stage a skill locally
 - `scripts/curator.py validate [<path>]` — validate staged or specified skill
 - `scripts/curator.py ship [--draft]` — push staged skills and create PR
 - `scripts/curator.py land <pr-number>` — merge PR and update inventory
@@ -90,6 +98,40 @@ The `import` command accepts:
 - **GitHub URL**: `https://github.com/owner/repo/tree/ref/path/to/skill`
 - **Repo path**: `owner/repo:path/to/skill` (uses default ref `main`)
 - **Local path**: `/absolute/path/to/skill` or `./relative/path`
+
+## Metadata Handling
+
+Skills in this repo use `metadata:` in SKILL.md frontmatter for repo-specific fields,
+per the [agentskills.io spec](https://agentskills.io/specification):
+
+```yaml
+---
+name: my-skill
+description: What this skill does and when to use it.
+metadata:
+  author: malar
+  repo: github.com/owner/repo
+  tags: [category, workflow]
+---
+```
+
+The `import` command auto-populates these fields when they are missing:
+
+| Field | Auto-populated from |
+|-------|---------------------|
+| `metadata.author` | `--author` flag, or `$USER` |
+| `metadata.repo` | Source GitHub URL (if imported from GitHub) |
+| `metadata.tags` | Derived from skill name + `curated` tag, or `--tags` flag |
+
+Override tags explicitly:
+
+```bash
+curator.py import ./my-skill --author malar --tags "api,integration,curated"
+```
+
+**When importing from external sources**, skills may have `author`, `repo`, or `tags`
+as top-level frontmatter fields (non-spec). The `import` command automatically moves
+these under `metadata:` during staging.
 
 ## Additional Resources
 
