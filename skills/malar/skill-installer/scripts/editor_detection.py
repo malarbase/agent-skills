@@ -31,7 +31,7 @@ EDITOR_CONFIGS = [
         "name": "opencode",
         "display_name": "OpenCode",
         "env_var": "OPENCODE_HOME",
-        "default_home": "~/.opencode",
+        "default_home": "~/.config/opencode",  # OpenCode uses XDG-style config path
     },
     {
         "name": "antigravity",
@@ -62,6 +62,12 @@ EDITOR_CONFIGS = [
         "display_name": "Generic Agent",
         "env_var": "AGENT_HOME",
         "default_home": "~/.agent",
+    },
+    {
+        "name": "agents",
+        "display_name": "Agent-Compatible",
+        "env_var": "AGENTS_HOME",
+        "default_home": "~/.agents",
     },
 ]
 
@@ -95,6 +101,7 @@ PROJECT_DIRS = [
     {"name": "cursor", "display_name": "Cursor", "project_dir": ".cursor"},
     {"name": "windsurf", "display_name": "Windsurf", "project_dir": ".windsurf"},
     {"name": "agent", "display_name": "Generic Agent", "project_dir": ".agent"},
+    {"name": "agents", "display_name": "Agent-Compatible", "project_dir": ".agents"},  # OpenCode/Claude also read .agents/skills/
 ]
 
 
@@ -177,6 +184,37 @@ def detect_project_skills_dir(
     return None
 
 
+def detect_running_editor() -> Optional[str]:
+    """
+    Detect which editor is currently running by checking runtime indicators.
+    
+    Returns:
+        Editor name (e.g., "cursor", "claude") or None if not detected
+    """
+    # Check for editor-specific environment variables that indicate runtime
+    # OpenCode sets OPENCODE=1 or AGENT=1
+    if os.environ.get("OPENCODE") == "1":
+        return "opencode"
+    
+    # Claude Code detection
+    if os.environ.get("CLAUDE") == "1" or "CLAUDE_CODE" in os.environ:
+        return "claude"
+    
+    # Cursor detection
+    if os.environ.get("CURSOR_AGENT") == "1" or "CURSOR_CLI" in os.environ:
+        return "cursor"
+    
+    # Check for project directory in current workspace
+    git_root = find_git_root()
+    if git_root:
+        for proj in PROJECT_DIRS:
+            proj_dir = os.path.join(git_root, proj["project_dir"])
+            if os.path.isdir(proj_dir):
+                return proj["name"]
+    
+    return None
+
+
 def detect_editor(
     force_editor: Optional[str] = None,
     prefer_project: bool = False,
@@ -188,9 +226,10 @@ def detect_editor(
     Detection priority:
     1. If prefer_project=True, check for project-local skills first
     2. Force-specified editor via parameter
-    3. Environment variables (CLAUDE_HOME, OPENCODE_HOME, etc.)
-    4. Existing home directories on disk
-    5. Fallback to generic .agent
+    3. Runtime detection (CURSOR_AGENT, etc.)
+    4. Environment variables (CLAUDE_HOME, OPENCODE_HOME, etc.)
+    5. Existing home directories on disk
+    6. Fallback to generic .agent
     
     Args:
         force_editor: Force a specific editor by name (claude, opencode, project, etc.)
@@ -258,7 +297,23 @@ def detect_editor(
             skills_dir=os.path.join(home, "skills"),
         )
     
-    # Check environment variables first
+    # Check for running editor first
+    running = detect_running_editor()
+    if running:
+        for config in EDITOR_CONFIGS:
+            if config["name"] == running:
+                home = os.environ.get(
+                    config["env_var"],
+                    os.path.expanduser(config["default_home"])
+                )
+                return EditorConfig(
+                    name=config["name"],
+                    display_name=config["display_name"],
+                    home_dir=home,
+                    skills_dir=os.path.join(home, "skills"),
+                )
+    
+    # Check environment variables
     for config in EDITOR_CONFIGS:
         env_val = os.environ.get(config["env_var"])
         if env_val:
