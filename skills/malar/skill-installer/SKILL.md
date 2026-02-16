@@ -1,9 +1,10 @@
 ---
 name: skill-installer
 description: Install AI agent skills from GitHub repositories into the current editor's skills directory. Works across all major AI coding editors (Claude Code, OpenCode, Antigravity, Cursor, etc.) by auto-detecting the editor and its skills location. Use when a user asks to list available skills, install a skill, or manage skills from GitHub repos (including private repos). Supports the Anthropic curated skills repository and custom skill sources.
-author: malar
-repo: github.com/malar/skills
-tags: [installer, skills, utility, cross-editor]
+metadata:
+  author: malar
+  repo: github.com/malar/skills
+  tags: [installer, skills, utility, cross-editor]
 ---
 
 # Skill Installer
