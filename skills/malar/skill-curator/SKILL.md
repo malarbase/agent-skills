@@ -1,10 +1,17 @@
 ---
 name: skill-curator
-description: Publish and maintain curated skills in the agent-skills repository. Handles importing skills from GitHub repos, local paths, or URLs, validating structure, creating PRs, and landing changes. Use when publishing skills, curating skills, shipping skills to the agent-skills repo, or managing the malarbase/agent-skills inventory.
+description: Publish and maintain curated skills in the agent-skills repository. Handles
+  importing skills from GitHub repos, local paths, or URLs, validating structure,
+  creating PRs, and landing changes. Use when publishing skills, curating skills,
+  shipping skills to the agent-skills repo, or managing the malarbase/agent-skills
+  inventory.
 metadata:
   author: malar
   repo: github.com/malarbase/agent-skills
-  tags: [curator, skills, publishing]
+  tags:
+  - curator
+  - skills
+  - publishing
 ---
 
 # Skill Curator
@@ -85,6 +92,30 @@ python scripts/curator.py ship
 python scripts/curator.py land 42
 ```
 
+## Pre-flight Checklist
+
+Before running `ship`, verify:
+
+- [ ] Local git repo has no uncommitted changes: `git status`
+- [ ] No stashed changes that should be included: `git stash list`
+- [ ] Skills are staged and validated: `curator.py status`
+- [ ] Changes are what you expect: review staged skill files in `~/.cache/skill-curator/staging/`
+
+**Note**: The `ship` command automatically cleans up the staging area after successfully creating a PR.
+
+### Local Repository Detection
+
+If you run `curator.py ship` from within the agent-skills repository itself, the curator will:
+
+1. Detect the local repo and use it directly (no cloning)
+2. Check for uncommitted changes (fails if found)
+3. Create a new branch from your current branch
+4. Commit and push the staged skills
+5. Create the PR
+6. Return you to your original branch
+
+This is more efficient and lets you review the changes with `git diff` before shipping.
+
 ## Source Formats
 
 The `import` command accepts:
@@ -128,4 +159,5 @@ these under `metadata:` during staging.
 
 ## Additional Resources
 
-For detailed command documentation, see [commands.md](commands.md).
+- For detailed command documentation, see [commands.md](commands.md)
+- For troubleshooting common issues, see [troubleshooting.md](troubleshooting.md)

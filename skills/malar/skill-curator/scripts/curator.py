@@ -105,6 +105,22 @@ def _skill_name_from_path(path: str) -> str:
     return os.path.basename(path.rstrip("/"))
 
 
+def _is_agent_skills_repo(path: str) -> bool:
+    """Check if the given path is the agent-skills repository."""
+    if not os.path.isdir(os.path.join(path, ".git")):
+        return False
+    
+    try:
+        result = subprocess.run(
+            ["git", "-C", path, "remote", "get-url", "origin"],
+            capture_output=True, text=True, check=True,
+        )
+        remote_url = result.stdout.strip()
+        return "agent-skills" in remote_url and TARGET_REPO.split("/")[0] in remote_url
+    except subprocess.CalledProcessError:
+        return False
+
+
 # ── Commands ────────────────────────────────────────────────────────────
 
 
@@ -235,13 +251,46 @@ def cmd_ship(draft: bool = False, dry_run: bool = False) -> None:
             print(f"[dry-run] Would copy: {p} → skills/{a}/{n}/")
         return
 
-    # Clone and prepare
-    if os.path.exists(CLONE_DIR):
-        shutil.rmtree(CLONE_DIR)
-    os.makedirs(CLONE_DIR, exist_ok=True)
+    # Check if we're already in the agent-skills repo
+    cwd = os.getcwd()
+    using_local_repo = _is_agent_skills_repo(cwd)
+    original_branch = None
+    
+    if using_local_repo:
+        print(f"Detected agent-skills repo at {cwd}")
+        clone_dest = cwd
+        
+        # Save current branch
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=clone_dest, capture_output=True, text=True, check=True,
+        )
+        original_branch = result.stdout.strip()
+        
+        # Check for uncommitted changes
+        result = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=clone_dest, capture_output=True, text=True, check=True,
+        )
+        if result.stdout.strip():
+            raise CuratorError(
+                "Working directory has uncommitted changes. "
+                "Commit or stash them before shipping."
+            )
+        
+        # Create and checkout branch
+        subprocess.run(
+            ["git", "checkout", "-b", branch],
+            cwd=clone_dest, check=True, capture_output=True,
+        )
+    else:
+        # Clone and prepare (original behavior)
+        if os.path.exists(CLONE_DIR):
+            shutil.rmtree(CLONE_DIR)
+        os.makedirs(CLONE_DIR, exist_ok=True)
 
-    clone_dest = os.path.join(CLONE_DIR, "agent-skills")
-    gh.clone_for_contribution(TARGET_REPO, branch, clone_dest)
+        clone_dest = os.path.join(CLONE_DIR, "agent-skills")
+        gh.clone_for_contribution(TARGET_REPO, branch, clone_dest)
 
     # Copy skills
     for author, name, skill_dir in staged:
@@ -293,6 +342,14 @@ def cmd_ship(draft: bool = False, dry_run: bool = False) -> None:
         head=head,
         draft=draft,
     )
+
+    # Return to original branch if using local repo
+    if using_local_repo and original_branch:
+        subprocess.run(
+            ["git", "checkout", original_branch],
+            cwd=clone_dest, check=True, capture_output=True,
+        )
+        print(f"Returned to branch: {original_branch}")
 
     # Cleanup staging
     for _, _, skill_dir in staged:
