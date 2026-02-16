@@ -21,12 +21,14 @@ skills/
 - **frontend-design** - Create distinctive, production-grade frontend interfaces
 - **skill-creator** - Guide for creating effective skills
 
-### malar (5 skills)
+### malar (7 skills)
 - **3d-rendering** - Generate 3D visualizations from floorplan DSL files
 - **claude-skill-installer** - Install Claude Code skills from GitHub repos
 - **maintain-skills** - Audit, inventory, and maintain skills
 - **mcp-integration** - Floorplan MCP server integration
 - **repo-maintenance** - Mermaid-floorplan monorepo maintenance
+- **skill-curator** - Publish and maintain curated skills in the agent-skills repo
+- **speclife** - Automate spec-driven development workflows with git and GitHub
 
 ### obra (14 skills)
 - **brainstorming** - Explore user intent and design before implementation

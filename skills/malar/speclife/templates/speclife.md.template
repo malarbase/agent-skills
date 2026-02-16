@@ -1,0 +1,21 @@
+# SpecLife Configuration
+
+This file provides context for AI agents using speclife slash commands.
+
+## Commands
+
+- **Test:** `npm test`
+- **Build:** `npm run build`
+- **Lint:** `npm run lint`
+
+## Release Policy
+
+- **Auto-release:** patch and minor versions
+- **Manual release:** major versions (breaking changes)
+
+## Context Files
+
+When implementing changes, always read:
+- `{{specDir}}/project.md` - project context and conventions
+- `{{specDir}}/AGENTS.md` - agent guidelines
+- `README.md` - project overview

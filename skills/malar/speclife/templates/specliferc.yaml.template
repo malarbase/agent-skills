@@ -1,0 +1,9 @@
+# SpecLife Configuration
+# Minimal settings - most values are auto-detected
+
+specDir: {{specDir}}
+
+git:
+  baseBranch: {{baseBranch}}
+  branchPrefix: spec/
+  worktreeDir: worktrees
