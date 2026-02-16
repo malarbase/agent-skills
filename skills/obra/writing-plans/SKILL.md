@@ -1,14 +1,10 @@
 ---
 name: writing-plans
-description: Use when you have a spec or requirements for a multi-step task, before
-  touching code
+description: Use when you have a spec or requirements for a multi-step task, before touching code
 metadata:
-  tags:
-  - planning
-  - documentation
-  - workflow
   author: obra
   repo: github.com/obra/superpowers
+  tags: [planning, documentation, workflow]
 ---
 
 # Writing Plans

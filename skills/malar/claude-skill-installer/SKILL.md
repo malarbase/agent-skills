@@ -1,16 +1,10 @@
 ---
 name: claude-skill-installer
-description: Install Claude Code skills into $CLAUDE_HOME/skills from the Anthropic
-  skills repository or from any GitHub repo path. Use when a user asks to list installable
-  skills, install a curated skill, or install a skill from another repo (including
-  private repos). Supports direct GitHub URLs like https://agent-skills.md/skills/anthropics/skills/skill-name.
+description: Install Claude Code skills into $CLAUDE_HOME/skills from the Anthropic skills repository or from any GitHub repo path. Use when a user asks to list installable skills, install a curated skill, or install a skill from another repo (including private repos). Supports direct GitHub URLs like https://agent-skills.md/skills/anthropics/skills/skill-name.
 metadata:
-  tags:
-  - installer
-  - skills
-  - utility
   author: malar
   repo: github.com/malar/skills
+  tags: [installer, skills, utility]
 ---
 
 # Claude Skill Installer

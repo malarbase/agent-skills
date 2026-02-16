@@ -1,17 +1,10 @@
 ---
 name: skill-curator
-description: Publish and maintain curated skills in the agent-skills repository. Handles
-  importing skills from GitHub repos, local paths, or URLs, validating structure,
-  creating PRs, and landing changes. Use when publishing skills, curating skills,
-  shipping skills to the agent-skills repo, or managing the malarbase/agent-skills
-  inventory.
+description: Publish and maintain curated skills in the agent-skills repository. Handles importing skills from GitHub repos, local paths, or URLs, validating structure, creating PRs, and landing changes. Use when publishing skills, curating skills, shipping skills to the agent-skills repo, or managing the malarbase/agent-skills inventory.
 metadata:
-  tags:
-  - curator
-  - skills
-  - publishing
   author: malar
   repo: github.com/malarbase/agent-skills
+  tags: [curator, skills, publishing]
 ---
 
 # Skill Curator

@@ -1,16 +1,11 @@
 ---
 name: skill-creator
-description: Guide for creating effective skills. This skill should be used when users
-  want to create a new skill (or update an existing skill) that extends Claude's capabilities
-  with specialized knowledge, workflows, or tool integrations.
+description: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Claude's capabilities with specialized knowledge, workflows, or tool integrations.
 license: Complete terms in LICENSE.txt
 metadata:
   author: anthropic
-  repo: github.com/malarbase/agent-skills
-  tags:
-  - skill
-  - creator
-  - curated
+  repo: github.com/anthropics/skills
+  tags: [skills, development, meta, curated]
 ---
 
 # Skill Creator
@@ -62,8 +57,7 @@ skill-name/
 ├── SKILL.md (required)
 │   ├── YAML frontmatter metadata (required)
 │   │   ├── name: (required)
-│   │   ├── description: (required)
-│   │   └── compatibility: (optional, rarely needed)
+│   │   └── description: (required)
 │   └── Markdown instructions (required)
 └── Bundled Resources (optional)
     ├── scripts/          - Executable code (Python/Bash/etc.)
@@ -75,7 +69,7 @@ skill-name/
 
 Every SKILL.md consists of:
 
-- **Frontmatter** (YAML): Contains `name` and `description` fields (required), plus optional fields like `license`, `metadata`, and `compatibility`. Only `name` and `description` are read by Claude to determine when the skill triggers, so be clear and comprehensive about what the skill is and when it should be used. The `compatibility` field is for noting environment requirements (target product, system packages, etc.) but most skills don't need it.
+- **Frontmatter** (YAML): Contains `name` and `description` fields. These are the only fields that Claude reads to determine when the skill gets used, thus it is very important to be clear and comprehensive in describing what the skill is, and when it should be used.
 - **Body** (Markdown): Instructions and guidance for using the skill. Only loaded AFTER the skill triggers (if at all).
 
 #### Bundled Resources (optional)
@@ -313,15 +307,34 @@ Any example files and directories not needed for the skill should be deleted. Th
 
 ##### Frontmatter
 
-Write the YAML frontmatter with `name` and `description`:
+Write the YAML frontmatter with required and optional fields:
 
-- `name`: The skill name
+**Required fields:**
+- `name`: The skill name (max 64 characters, lowercase, numbers, and hyphens only)
 - `description`: This is the primary triggering mechanism for your skill, and helps Claude understand when to use the skill.
   - Include both what the Skill does and specific triggers/contexts for when to use it.
   - Include all "when to use" information here - Not in the body. The body is only loaded after triggering, so "When to Use This Skill" sections in the body are not helpful to Claude.
   - Example description for a `docx` skill: "Comprehensive document creation, editing, and analysis with support for tracked changes, comments, formatting preservation, and text extraction. Use when Claude needs to work with professional documents (.docx files) for: (1) Creating new documents, (2) Modifying or editing content, (3) Working with tracked changes, (4) Adding comments, or any other document tasks"
 
-Do not include any other fields in YAML frontmatter.
+**Optional metadata fields:**
+- `author`: The skill author or organization (e.g., "anthropic", "obra", "your-username")
+- `repo`: Source repository URL (e.g., "github.com/anthropics/skills")
+- `license`: License reference (e.g., "Complete terms in LICENSE.txt")
+- `tags`: Array of categorization tags (e.g., [workflow, testing, git])
+
+Example frontmatter with full metadata:
+
+```yaml
+---
+name: code-review-assistant
+description: Reviews pull requests for security vulnerabilities and style guide compliance. Use when reviewing PRs, checking code quality, or validating changes before merge.
+author: engineering-team
+repo: github.com/company/skills
+tags: [code-review, security, workflow]
+---
+```
+
+These optional fields help with skill discovery, attribution, and organization but are not used by Claude for skill activation.
 
 ##### Body
 

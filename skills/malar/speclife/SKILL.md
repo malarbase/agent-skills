@@ -1,16 +1,10 @@
 ---
 name: speclife
-description: 'Automate spec-driven development workflows with git and GitHub. Manages
-  the full change lifecycle: creating branches/worktrees, implementing via OpenSpec,
-  shipping PRs, landing merges, and releasing versions. Use when the user mentions
-  speclife, spec-driven development, worktrees, shipping changes, landing PRs, creating
-  releases, or any /speclife command.'
+description: "Automate spec-driven development workflows with git and GitHub. Manages the full change lifecycle: creating branches/worktrees, implementing via OpenSpec, shipping PRs, landing merges, and releasing versions. Use when the user mentions speclife, spec-driven development, worktrees, shipping changes, landing PRs, creating releases, or any /speclife command."
 metadata:
   author: malar
   repo: github.com/malarbase/agent-skills
-  tags:
-  - speclife
-  - curated
+  tags: [speclife, curated]
 ---
 
 # SpecLife

@@ -2,13 +2,9 @@
 name: maintain-skills
 description: Maintain Skills and Agents
 metadata:
-  tags:
-  - skills
-  - maintenance
-  - inventory
-  - meta
   author: malar
   repo: github.com/malar/skills
+  tags: [skills, maintenance, inventory, meta]
 ---
 
 # Maintain Skills
