@@ -1,10 +1,19 @@
 ---
 name: skill-installer
-description: Install AI agent skills from GitHub repositories into the current editor's skills directory. Works across all major AI coding editors (Claude Code, OpenCode, Antigravity, Cursor, etc.) by auto-detecting the editor and its skills location. Use when a user asks to list available skills, install a skill, or manage skills from GitHub repos (including private repos). Supports the Anthropic curated skills repository and custom skill sources.
+description: Install AI agent skills from GitHub repositories into the current editor's
+  skills directory. Works across all major AI coding editors (Claude Code, OpenCode,
+  Antigravity, Cursor, etc.) by auto-detecting the editor and its skills location.
+  Use when a user asks to list available skills, install a skill, or manage skills
+  from GitHub repos (including private repos). Supports the Anthropic curated skills
+  repository and custom skill sources.
 metadata:
   author: malar
   repo: github.com/malar/skills
-  tags: [installer, skills, utility, cross-editor]
+  tags:
+  - installer
+  - skills
+  - utility
+  - cross-editor
 ---
 
 # Skill Installer
@@ -117,13 +126,26 @@ scripts/list-curated-skills.py --project-editor antigravity
 
 ## Behavior
 
-1. **Auto-detection**: Checks environment variables in priority order to find the active editor
-2. **Project-local**: With `--project`, auto-detects and uses the editor's project directory (e.g., `.claude/skills/`)
-3. **Editor-specific**: Use `--project-editor` to explicitly choose which editor's project directory to use
-4. **Download-first**: Attempts direct download for public repos, falls back to git sparse checkout
-5. **Validation**: Ensures skill has `SKILL.md` before installing
-6. **No overwrite**: Aborts if destination skill directory already exists
-7. **Private repos**: Supports `GITHUB_TOKEN` or `GH_TOKEN` for authentication
+1. **Auto-detection**: Detects the active editor using runtime indicators (e.g., `CURSOR_AGENT=1` for Cursor), environment variables, and existing directories
+2. **Runtime-first**: Prioritizes detecting which editor is actually running over checking for existing directories
+3. **Project-local**: With `--project`, auto-detects and uses the editor's project directory (e.g., `.claude/skills/`)
+4. **Editor-specific**: Use `--project-editor` to explicitly choose which editor's project directory to use
+5. **Download-first**: Attempts direct download for public repos, falls back to git sparse checkout
+6. **Validation**: Ensures skill has `SKILL.md` before installing
+7. **No overwrite**: Aborts if destination skill directory already exists
+8. **Private repos**: Supports `GITHUB_TOKEN` or `GH_TOKEN` for authentication
+
+### Detection Priority
+
+The installer detects editors in this order:
+
+1. **Force-specified**: `--editor cursor` always wins
+2. **Runtime detection**: Checks for editor-specific runtime indicators:
+   - Cursor: `CURSOR_AGENT=1` environment variable
+   - Other editors: Project directories in git root
+3. **Environment variables**: `CURSOR_HOME`, `CLAUDE_HOME`, etc.
+4. **Existing directories**: `~/.cursor`, `~/.claude`, etc.
+5. **Fallback**: `~/.agent` if nothing else is found
 
 ## Communication
 
