@@ -1,0 +1,45 @@
+#!/bin/sh
+# progressive-context post-commit hook
+# Checks if committed files affect any freshness-tracked context files.
+
+# Find git root
+GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -z "$GIT_ROOT" ]; then
+    exit 0
+fi
+
+# Locate the scripts directory
+# Check common locations: skill install in home, or local .context-scripts/
+SCRIPT_DIR=""
+for candidate in \
+    "$HOME/.cursor/skills/progressive-context/scripts" \
+    "$HOME/.claude/skills/progressive-context/scripts" \
+    "$GIT_ROOT/.context-scripts"; do
+    if [ -f "$candidate/context_check_watches.py" ]; then
+        SCRIPT_DIR="$candidate"
+        break
+    fi
+done
+
+if [ -z "$SCRIPT_DIR" ]; then
+    # Scripts not found — skip silently
+    exit 0
+fi
+
+# Check for Python 3
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "[context] Warning: python3 not found, skipping freshness check"
+    exit 0
+fi
+
+# Get list of files changed in the last commit
+CHANGED_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null)
+if [ -z "$CHANGED_FILES" ]; then
+    exit 0
+fi
+
+# Pass each changed file to the check script
+# shellcheck disable=SC2086
+python3 "$SCRIPT_DIR/context_check_watches.py" $CHANGED_FILES
+
+exit 0
