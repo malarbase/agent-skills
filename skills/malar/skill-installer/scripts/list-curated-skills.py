@@ -29,10 +29,39 @@ class Args(argparse.Namespace):
     editor: str | None
     project: bool
     project_editor: str | None
+    tags: list[str] | None
+    author: str | None
+    curator: str | None
+    from_repo: str | None
+    filter: list[str] | None
+    match_all_tags: bool
 
 
 def _list_curated(repo: str, path: str, ref: str) -> list[str]:
-    """Fetch the list of curated skills from GitHub."""
+    """Fetch the list of curated skills from GitHub or local filesystem."""
+    # Check if we're in the local agent-skills repo
+    from metadata_utils import _is_agent_skills_repo, _get_agent_skills_repo_root
+    
+    if _is_agent_skills_repo():
+        # Use local filesystem
+        import os
+        repo_root = _get_agent_skills_repo_root()
+        if not repo_root:
+            raise ListError("Could not find agent-skills repo root")
+        
+        skills_path = os.path.join(repo_root, path)
+        
+        if not os.path.isdir(skills_path):
+            raise ListError(f"Skills path not found: {skills_path}")
+        
+        try:
+            skills = [d for d in os.listdir(skills_path) 
+                     if os.path.isdir(os.path.join(skills_path, d)) and not d.startswith('.')]
+            return sorted(skills)
+        except OSError as exc:
+            raise ListError(f"Failed to list local skills: {exc}") from exc
+    
+    # Use GitHub API
     api_url = github_api_contents_url(repo, path, ref)
     try:
         payload = github_request(api_url)
@@ -103,6 +132,34 @@ Examples:
         help="Which editor's project dir to check: claude (.claude), opencode (.opencode), "
              "antigravity (.gemini), cursor (.cursor), windsurf (.windsurf), agent (.agent)",
     )
+    parser.add_argument(
+        "--tags",
+        nargs="+",
+        help="Filter skills by tag(s). Shows skills matching any tag by default.",
+    )
+    parser.add_argument(
+        "--author",
+        help="Filter skills by content author (metadata.author field).",
+    )
+    parser.add_argument(
+        "--curator",
+        help="Filter skills by curator/contributor (directory name in repo structure).",
+    )
+    parser.add_argument(
+        "--from-repo",
+        dest="from_repo",
+        help="Filter skills by source repository (metadata.repo field).",
+    )
+    parser.add_argument(
+        "--filter",
+        action="append",
+        help="Filter by metadata field (format: key=value). Can be specified multiple times.",
+    )
+    parser.add_argument(
+        "--match-all-tags",
+        action="store_true",
+        help="Require skills to match all specified tags (AND logic instead of OR).",
+    )
     return parser.parse_args(argv, namespace=Args())
 
 
@@ -118,6 +175,48 @@ def main(argv: list[str]) -> int:
         
         # Fetch skills list
         skills = _list_curated(args.repo, args.path, args.ref)
+        
+        # Filter by metadata if requested
+        if args.tags or args.author or args.curator or args.from_repo or args.filter:
+            from metadata_utils import filter_skills_by_metadata
+            
+            # Parse custom filters
+            custom_filters = {}
+            if args.filter:
+                for f in args.filter:
+                    if "=" not in f:
+                        print(f"Warning: Invalid filter format '{f}', expected key=value", file=sys.stderr)
+                        continue
+                    key, value = f.split("=", 1)
+                    custom_filters[key.strip()] = value.strip()
+            
+            skills = filter_skills_by_metadata(
+                args.repo,
+                skills,
+                args.ref,
+                tags=args.tags,
+                author=args.author,
+                curator=args.curator,
+                from_repo=args.from_repo,
+                filters=custom_filters if custom_filters else None,
+                match_all_tags=args.match_all_tags,
+            )
+            
+            if not skills:
+                criteria = []
+                if args.tags:
+                    criteria.append(f"tags: {', '.join(args.tags)}")
+                if args.author:
+                    criteria.append(f"author: {args.author}")
+                if args.curator:
+                    criteria.append(f"curator: {args.curator}")
+                if args.from_repo:
+                    criteria.append(f"from-repo: {args.from_repo}")
+                if custom_filters:
+                    criteria.extend(f"{k}={v}" for k, v in custom_filters.items())
+                print(f"No skills found matching {' AND '.join(criteria)}")
+                return 0
+        
         installed = get_installed_skills(editor)
         
         if args.format == "json":
@@ -136,6 +235,23 @@ def main(argv: list[str]) -> int:
             print(json.dumps(payload, indent=2))
         else:
             print(f"\nAvailable skills from {args.repo}:\n")
+            
+            # Show active filters
+            filters_applied = []
+            if args.tags:
+                filters_applied.append(f"tags: {', '.join(args.tags)}")
+            if args.author:
+                filters_applied.append(f"author: {args.author}")
+            if args.curator:
+                filters_applied.append(f"curator: {args.curator}")
+            if args.from_repo:
+                filters_applied.append(f"from-repo: {args.from_repo}")
+            if args.filter:
+                filters_applied.extend(args.filter)
+            
+            if filters_applied:
+                print(f"Filtered by {' AND '.join(filters_applied)}\n")
+            
             for idx, name in enumerate(skills, start=1):
                 suffix = " (already installed)" if name in installed else ""
                 print(f"  {idx}. {name}{suffix}")
