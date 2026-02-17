@@ -47,7 +47,7 @@ All scripts live in `scripts/` and require Python 3.10+. Push/PR operations requ
 | Setting | Default | Env Override |
 |---------|---------|--------------|
 | Target repo | `malarbase/agent-skills` | `SKILL_CURATOR_REPO` |
-| Staging dir | `~/.cache/skill-curator/staging` | `SKILL_CURATOR_STAGING` |
+| Staging dir | `.staging/` (in repo) or `~/.cache/skill-curator/staging` (outside repo) | `SKILL_CURATOR_STAGING` |
 | Clone cache | `~/.cache/skill-curator/repo` | `SKILL_CURATOR_CLONE` |
 
 ## Authentication
@@ -99,9 +99,69 @@ Before running `ship`, verify:
 - [ ] Local git repo has no uncommitted changes: `git status`
 - [ ] No stashed changes that should be included: `git stash list`
 - [ ] Skills are staged and validated: `curator.py status`
-- [ ] Changes are what you expect: review staged skill files in `~/.cache/skill-curator/staging/`
+- [ ] Changes are what you expect: review staged skill files in `.staging/` (or `~/.cache/skill-curator/staging/` if outside repo)
 
 **Note**: The `ship` command automatically cleans up the staging area after successfully creating a PR.
+
+### Handling Repository Changes
+
+If you have uncommitted changes to the curator tool or other repo files:
+
+**Recommended: Separate PRs**
+```bash
+# 1. Commit repo changes first
+git add .gitignore skills/malar/skill-curator/
+git commit -m "feat(curator): improve staging workflow"
+git push
+
+# 2. Then ship skills (creates separate PR)
+python scripts/curator.py ship
+```
+
+**Why separate PRs?**
+- Different review types (code review vs content review)
+- Independent rollback if issues arise
+- Cleaner commit history and PR purpose
+- Easier to review focused changes
+
+The `ship` command will fail if uncommitted changes exist, preventing accidental mixing of concerns.
+
+## Reviewing Staged Skills
+
+### Default Staging Location
+
+When working **within the agent-skills repository**, skills are staged to `.staging/` in the repo root for easy editor access. This directory is gitignored, so staged skills won't clutter `git status`.
+
+When working **outside the agent-skills repository**, skills are staged to `~/.cache/skill-curator/staging`.
+
+### Editor-Based Review Workflow
+
+1. Import skills - they appear in `.staging/author/skill-name/` in your editor's file tree
+2. Browse, read, and validate staged skills directly in your editor
+3. Make edits if needed (fix typos, adjust metadata, etc.)
+4. Run `validate` to ensure all skills pass checks
+5. Run `ship` to copy from `.staging/` to `skills/` and create a PR
+
+### Opening Staged Skills
+
+From within the agent-skills repo:
+```bash
+# Staged skills are in .staging/ - already visible in your editor tree
+code .staging/author/skill-name/SKILL.md
+```
+
+From outside the repo (using cache):
+```bash
+# Open staging area in a new editor window
+code ~/.cache/skill-curator/staging
+```
+
+### Custom Staging Location
+
+Override the default with:
+```bash
+export SKILL_CURATOR_STAGING=/custom/path/to/staging
+```
 
 ### Local Repository Detection
 

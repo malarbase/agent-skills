@@ -18,9 +18,33 @@ import skill_utils
 from inventory import update_readme
 
 TARGET_REPO = os.environ.get("SKILL_CURATOR_REPO", "malarbase/agent-skills")
-STAGING_DIR = os.path.expanduser(
-    os.environ.get("SKILL_CURATOR_STAGING", "~/.cache/skill-curator/staging")
-)
+
+
+def _is_agent_skills_repo(path: str) -> bool:
+    """Check if the given path is the agent-skills repository."""
+    if not os.path.isdir(os.path.join(path, ".git")):
+        return False
+    
+    try:
+        result = subprocess.run(
+            ["git", "-C", path, "remote", "get-url", "origin"],
+            capture_output=True, text=True, check=True,
+        )
+        remote_url = result.stdout.strip()
+        return "agent-skills" in remote_url and TARGET_REPO.split("/")[0] in remote_url
+    except subprocess.CalledProcessError:
+        return False
+
+
+def _get_default_staging_dir() -> str:
+    """Get default staging directory - .staging/ in repo if in agent-skills, else cache."""
+    cwd = os.getcwd()
+    if _is_agent_skills_repo(cwd):
+        return os.path.join(cwd, ".staging")
+    return os.path.expanduser("~/.cache/skill-curator/staging")
+
+
+STAGING_DIR = os.environ.get("SKILL_CURATOR_STAGING") or _get_default_staging_dir()
 CLONE_DIR = os.path.expanduser(
     os.environ.get("SKILL_CURATOR_CLONE", "~/.cache/skill-curator/repo")
 )
@@ -103,22 +127,6 @@ def _fetch_from_github(source: dict, dest: str) -> str:
 def _skill_name_from_path(path: str) -> str:
     """Derive skill name from a path."""
     return os.path.basename(path.rstrip("/"))
-
-
-def _is_agent_skills_repo(path: str) -> bool:
-    """Check if the given path is the agent-skills repository."""
-    if not os.path.isdir(os.path.join(path, ".git")):
-        return False
-    
-    try:
-        result = subprocess.run(
-            ["git", "-C", path, "remote", "get-url", "origin"],
-            capture_output=True, text=True, check=True,
-        )
-        remote_url = result.stdout.strip()
-        return "agent-skills" in remote_url and TARGET_REPO.split("/")[0] in remote_url
-    except subprocess.CalledProcessError:
-        return False
 
 
 # ── Commands ────────────────────────────────────────────────────────────

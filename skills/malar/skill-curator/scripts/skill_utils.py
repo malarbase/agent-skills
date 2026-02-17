@@ -17,7 +17,7 @@ import yaml
 
 SENSITIVE_PATTERNS = [".env", "credentials", ".key", ".pem", ".p12", ".secret"]
 
-FIELDS_TO_MIGRATE = {"author", "repo", "tags"}
+FIELDS_TO_MIGRATE = {"author", "repo", "tags", "displayName", "version"}
 
 
 def validate_skill(path: str, repo_root: str | None = None) -> list[str]:
