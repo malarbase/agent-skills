@@ -1,0 +1,40 @@
+#!/bin/sh
+# progressive-context post-merge hook
+# Runs a full context freshness audit after a merge (e.g., git pull).
+
+# Find git root
+GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -z "$GIT_ROOT" ]; then
+    exit 0
+fi
+
+# Locate the scripts directory
+SCRIPT_DIR=""
+for candidate in \
+    "$HOME/.cursor/skills/progressive-context/scripts" \
+    "$HOME/.claude/skills/progressive-context/scripts" \
+    "$GIT_ROOT/.context-scripts"; do
+    if [ -f "$candidate/context_audit.py" ]; then
+        SCRIPT_DIR="$candidate"
+        break
+    fi
+done
+
+if [ -z "$SCRIPT_DIR" ]; then
+    # Scripts not found — skip silently
+    exit 0
+fi
+
+# Check for Python 3
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "[context] Warning: python3 not found, skipping freshness audit"
+    exit 0
+fi
+
+# Run the full audit
+echo ""
+echo "[context] Running post-merge freshness audit..."
+echo ""
+python3 "$SCRIPT_DIR/context_audit.py" --root "$GIT_ROOT"
+
+exit 0
