@@ -71,8 +71,50 @@ Use the helper scripts based on the task:
 
 - **List skills**: Show available curated skills from the Anthropic repository
 - **Install by name**: Install a curated skill by its name
+- **Install by metadata**: Install skills matching tags, author, or custom metadata
 - **Install from repo**: Install from any GitHub `owner/repo` with a path
 - **Install from URL**: Install from a direct GitHub URL
+
+### Install by Metadata
+
+Install skills matching metadata criteria:
+
+```bash
+# Install all "convex" tagged skills
+scripts/install-skill.py --tags convex
+
+# Install by content author (who wrote the skill)
+scripts/install-skill.py --author Convex
+
+# Install by curator (who added the skill to the repo)
+scripts/install-skill.py --curator waynesutton
+
+# Install by source repository
+scripts/install-skill.py --from-repo github.com/waynesutton/convexskills
+
+# Combine filters (AND logic between different filter types)
+scripts/install-skill.py --tags convex --author Convex
+
+# Install skills with multiple tags (OR logic by default)
+scripts/install-skill.py --tags api integration database
+
+# Require ALL tags (AND logic)
+scripts/install-skill.py --tags convex backend --match-all-tags
+
+# Custom metadata filters
+scripts/install-skill.py --filter "license=MIT"
+scripts/install-skill.py --filter "repo=github.com/myorg/skills" --filter "license=MIT"
+```
+
+**Understanding Author vs Curator:**
+- `--author`: Filters by `metadata.author` field (content creator)
+- `--curator`: Filters by directory path (supply chain owner, typically the GitHub username)
+- `--from-repo`: Filters by `metadata.repo` field (original source repository)
+
+Example: Skills from `github.com/waynesutton/convexskills` might have:
+- Curator: `waynesutton` (directory: `skills/waynesutton/`)
+- Author: `Convex` (metadata field in SKILL.md)
+- Source repo: `github.com/waynesutton/convexskills` (metadata field)
 
 ## Scripts
 
@@ -85,8 +127,21 @@ scripts/list-curated-skills.py
 # JSON output format
 scripts/list-curated-skills.py --format json
 
+# List skills filtered by metadata
+scripts/list-curated-skills.py --tags convex
+scripts/list-curated-skills.py --author Convex
+scripts/list-curated-skills.py --curator waynesutton
+scripts/list-curated-skills.py --from-repo github.com/waynesutton/convexskills
+scripts/list-curated-skills.py --tags backend --author malar
+
 # Install from curated list
 scripts/install-skill.py --skill <skill-name>
+
+# Install all skills matching metadata criteria
+scripts/install-skill.py --tags convex
+scripts/install-skill.py --author Convex
+scripts/install-skill.py --curator waynesutton
+scripts/install-skill.py --from-repo github.com/waynesutton/convexskills
 
 # Install from GitHub repo + path
 scripts/install-skill.py --repo <owner>/<repo> --path <path/to/skill>
@@ -113,6 +168,12 @@ scripts/list-curated-skills.py --project-editor antigravity
 | Option | Description |
 |--------|-------------|
 | `--skill` | Install a curated skill by name |
+| `--tags` | Filter/install skills by tag(s) - matches ANY tag by default |
+| `--author` | Filter/install skills by content author (metadata.author field) |
+| `--curator` | Filter/install skills by curator/contributor (directory name in repo) |
+| `--from-repo` | Filter/install skills by source repository (metadata.repo field) |
+| `--filter` | Filter by metadata field (key=value format). Multiple --filter flags use AND logic |
+| `--match-all-tags` | Require ALL specified tags (AND logic instead of OR) |
 | `--repo` | GitHub `owner/repo` format |
 | `--path` | Path(s) to skill(s) inside the repo |
 | `--url` | Full GitHub URL to skill directory |
@@ -124,16 +185,35 @@ scripts/list-curated-skills.py --project-editor antigravity
 | `--project-editor` | Specify which editor's project dir: `claude` (`.claude/`), `antigravity` (`.gemini/`), etc. |
 | `--method` | Download method: `auto`, `download`, `git` |
 
+## Filter Logic
+
+When multiple filters are specified, they are combined with AND logic:
+
+- `--tags convex --author Convex` → skills that have "convex" tag AND are authored by Convex
+- `--tags convex --curator waynesutton` → convex-tagged skills curated by waynesutton
+- `--from-repo github.com/waynesutton/convexskills` → skills from this source repository
+- `--tags api backend` → skills with "api" OR "backend" tag (unless --match-all-tags is used)
+- `--tags api backend --match-all-tags` → skills with BOTH "api" AND "backend" tags
+- `--author malar --filter "license=MIT"` → malar's skills that have MIT license
+
+Multiple `--filter` flags are also combined with AND logic.
+
+**Filter Semantics:**
+- `--author`: Content creator (metadata.author field)
+- `--curator`: Supply chain owner (directory path)
+- `--from-repo`: Original source repository (metadata.repo field)
+
 ## Behavior
 
-1. **Auto-detection**: Detects the active editor using runtime indicators (e.g., `CURSOR_AGENT=1` for Cursor), environment variables, and existing directories
-2. **Runtime-first**: Prioritizes detecting which editor is actually running over checking for existing directories
-3. **Project-local**: With `--project`, auto-detects and uses the editor's project directory (e.g., `.claude/skills/`)
-4. **Editor-specific**: Use `--project-editor` to explicitly choose which editor's project directory to use
-5. **Download-first**: Attempts direct download for public repos, falls back to git sparse checkout
-6. **Validation**: Ensures skill has `SKILL.md` before installing
-7. **No overwrite**: Aborts if destination skill directory already exists
-8. **Private repos**: Supports `GITHUB_TOKEN` or `GH_TOKEN` for authentication
+1. **Local-first**: When run inside the agent-skills repository, reads metadata directly from disk (faster, no rate limits). Falls back to GitHub API for remote repos
+2. **Auto-detection**: Detects the active editor using runtime indicators (e.g., `CURSOR_AGENT=1` for Cursor), environment variables, and existing directories
+3. **Runtime-first**: Prioritizes detecting which editor is actually running over checking for existing directories
+4. **Project-local**: With `--project`, auto-detects and uses the editor's project directory (e.g., `.claude/skills/`)
+5. **Editor-specific**: Use `--project-editor` to explicitly choose which editor's project directory to use
+6. **Download-first**: Attempts direct download for public repos, falls back to git sparse checkout
+7. **Validation**: Ensures skill has `SKILL.md` before installing
+8. **No overwrite**: Aborts if destination skill directory already exists
+9. **Private repos**: Supports `GITHUB_TOKEN` or `GH_TOKEN` for authentication
 
 ### Detection Priority
 

@@ -25,6 +25,12 @@ DEFAULT_PATH = "skills"
 @dataclass
 class Args:
     skill: str | None = None
+    tags: list[str] | None = None     # NEW
+    author: str | None = None          # NEW
+    curator: str | None = None         # NEW
+    from_repo: str | None = None       # NEW
+    filter: list[str] | None = None    # NEW (key=value pairs)
+    match_all_tags: bool = False       # NEW
     url: str | None = None
     repo: str | None = None
     path: list[str] | None = None
@@ -228,6 +234,67 @@ def _prepare_repo(source: Source, method: str, tmp_dir: str) -> str:
 
 def _resolve_source(args: Args) -> Source:
     """Resolve arguments into a Source object."""
+    # NEW: Handle metadata filtering (--tags, --author, --curator, --from-repo, --filter)
+    if args.tags or args.author or args.curator or args.from_repo or args.filter:
+        from metadata_utils import filter_skills_by_metadata
+        from github_utils import github_api_contents_url, github_request
+        import json
+        
+        # Default to curated repo
+        repo = args.repo or DEFAULT_REPO
+        path = DEFAULT_PATH
+        ref = args.ref
+        
+        # Fetch all skills
+        api_url = github_api_contents_url(repo, path, ref)
+        payload = github_request(api_url)
+        data = json.loads(payload.decode("utf-8"))
+        all_skills = [item["name"] for item in data if item.get("type") == "dir"]
+        
+        # Parse custom filters
+        custom_filters = {}
+        if args.filter:
+            for f in args.filter:
+                if "=" not in f:
+                    raise InstallError(f"Invalid filter format '{f}', expected key=value")
+                key, value = f.split("=", 1)
+                custom_filters[key.strip()] = value.strip()
+        
+        # Filter by metadata
+        matching = filter_skills_by_metadata(
+            repo,
+            all_skills,
+            ref,
+            tags=args.tags,
+            author=args.author,
+            curator=args.curator,
+            from_repo=args.from_repo,
+            filters=custom_filters if custom_filters else None,
+            match_all_tags=args.match_all_tags,
+        )
+        
+        if not matching:
+            criteria = []
+            if args.tags:
+                criteria.append(f"tags: {', '.join(args.tags)}")
+            if args.author:
+                criteria.append(f"author: {args.author}")
+            if args.curator:
+                criteria.append(f"curator: {args.curator}")
+            if args.from_repo:
+                criteria.append(f"from-repo: {args.from_repo}")
+            if custom_filters:
+                criteria.extend(f"{k}={v}" for k, v in custom_filters.items())
+            raise InstallError(f"No skills found matching {' AND '.join(criteria)}")
+        
+        repo_parts = repo.split("/")
+        return Source(
+            owner=repo_parts[0],
+            repo=repo_parts[1],
+            ref=ref,
+            paths=[f"{path}/{name}" for name in matching],
+        )
+    
     # Handle --skill (curated skill by name)
     if args.skill:
         return Source(
@@ -280,13 +347,18 @@ def _parse_args(argv: list[str]) -> Args:
         epilog="""
 Examples:
   %(prog)s --skill doc-coauthoring          # Install curated skill by name
+  %(prog)s --tags convex                    # Install all skills tagged "convex"
+  %(prog)s --author Convex                  # Install all skills by content author
+  %(prog)s --curator waynesutton            # Install all skills by curator
+  %(prog)s --from-repo github.com/waynesutton/convexskills  # Install by source repo
+  %(prog)s --tags convex --author Convex    # Install Convex's convex-tagged skills
+  %(prog)s --tags convex backend --match-all-tags  # Skills with BOTH tags
+  %(prog)s --filter "license=MIT"           # Install skills with MIT license
+  %(prog)s --tags backend --filter "repo=github.com/myorg/skills"  # Combined filters
   %(prog)s --repo anthropics/skills --path skills/skill-creator
   %(prog)s --url https://github.com/anthropics/skills/tree/main/skills/docx
-  %(prog)s --repo myorg/skills --path skill1 skill2 skill3
   %(prog)s --skill docx --editor opencode   # Force OpenCode global destination
   %(prog)s --skill docx --project           # Install to project (auto-detect editor dir)
-  %(prog)s --skill docx --project --project-editor claude  # Install to .claude/skills
-  %(prog)s --skill docx --project --project-editor gemini  # Install to .gemini/skills
         """,
     )
     parser.add_argument(
@@ -339,6 +411,34 @@ Examples:
         dest="project_editor",
         help="Which editor's project dir to use: claude (.claude), opencode (.opencode), "
              "antigravity (.gemini), cursor (.cursor), windsurf (.windsurf), agent (.agent)",
+    )
+    parser.add_argument(
+        "--tags",
+        nargs="+",
+        help="Install all skills matching tag(s) from the curated repo",
+    )
+    parser.add_argument(
+        "--author",
+        help="Install all skills by content author (metadata.author field)",
+    )
+    parser.add_argument(
+        "--curator",
+        help="Install all skills by curator/contributor (directory name in repo structure)",
+    )
+    parser.add_argument(
+        "--from-repo",
+        dest="from_repo",
+        help="Install all skills from source repository (metadata.repo field)",
+    )
+    parser.add_argument(
+        "--filter",
+        action="append",
+        help="Filter by metadata field (format: key=value). Can be specified multiple times for AND logic.",
+    )
+    parser.add_argument(
+        "--match-all-tags",
+        action="store_true",
+        help="Require skills to match all specified tags (AND logic instead of OR)",
     )
     return parser.parse_args(argv, namespace=Args())
 
