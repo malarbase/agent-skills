@@ -9,8 +9,8 @@ A freshness marker is an HTML comment embedded in a markdown context file:
 watches_hash: a3f2b1c
 last_verified: 2026-02-16
 watches:
-  - glob/pattern/one/**
-  - glob/pattern/two.ts
+  - src/renderer/**
+  - src/styles.ts
 -->
 ```
 
@@ -21,24 +21,21 @@ The marker must appear anywhere in the file. Convention is to place it at the
 
 ### `watches_hash` (required)
 
-A 7-character git hash that represents the current state of all watched files.
+A 7-character git hash representing the current state of all watched files.
 
-**How it's computed:**
+**How it's computed (content-aware):**
 
-1. Run `git ls-files` to get all tracked files in the repo
-2. Filter the file list using `fnmatch` against each watch glob
-3. Sort the matched filenames alphabetically for determinism
-4. Join with newlines (with trailing newline)
-5. Pipe the resulting string to `git hash-object --stdin`
+1. Run `git ls-files -s` to get all tracked files with their blob hashes
+2. Filter by matching file paths against each watch glob using `fnmatch`
+3. Sort matched entries by file path for determinism
+4. Build a string of `"<blob_hash> <filepath>\n"` lines
+5. Pipe through `git hash-object --stdin`
 6. Truncate to the first 7 characters
 
-This means the hash changes when:
+The hash changes when:
+- A watched file's **content** is modified (blob hash changes)
 - A watched file is added, removed, or renamed
 - The set of files matching the globs changes
-
-Note: the hash is based on the **file list**, not file contents. This is
-intentional — it's fast to compute and captures structural changes. Content-level
-staleness is caught by the human reviewer during the verify-and-stamp workflow.
 
 ### `last_verified` (required)
 
@@ -52,6 +49,10 @@ Updated automatically by `context_update_hash.py`.
 A YAML-style list of glob patterns. Each pattern is matched against file paths
 relative to the git root using Python's `fnmatch`.
 
+**Important:** `fnmatch` does not treat `/` as special. Both `*` and `**` match
+across directory boundaries. We standardize on `**` by convention so that intent
+is clear if the matching engine ever changes.
+
 Common patterns:
 
 | Pattern | Matches |
@@ -59,7 +60,7 @@ Common patterns:
 | `src/renderer/**` | All files under src/renderer/ (any depth) |
 | `src/renderer/*.ts` | TypeScript files directly in src/renderer/ |
 | `*.config.js` | Config files in root |
-| `language/src/**/*.langium` | All .langium files under language/src/ |
+| `my-pkg/src/**/*.langium` | All .langium files under my-pkg/src/ |
 
 ## Placement
 

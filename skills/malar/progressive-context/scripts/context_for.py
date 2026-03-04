@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Deterministic context lookup by file path.
 
-Reads a routing table from CLAUDE.md's `## Context Index` markdown table
+Reads a routing table from CLAUDE.md's ``## Context Index`` markdown table
 and maps source file paths to context files.
 
 Three modes:
@@ -21,17 +21,7 @@ import sys
 from fnmatch import fnmatch
 from pathlib import Path
 
-
-def find_git_root() -> Path:
-    """Find the git repository root."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, check=True,
-        )
-        return Path(result.stdout.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        return Path(".")
+from context_lib import find_git_root
 
 
 def parse_context_index(git_root: Path) -> list[tuple[str, str]]:
@@ -48,7 +38,6 @@ def parse_context_index(git_root: Path) -> list[tuple[str, str]]:
     except OSError:
         return []
 
-    # Find the ## Context Index section
     section_match = re.search(
         r"##\s+Context Index\s*\n(.*?)(?=\n##\s|\Z)",
         content,
@@ -59,7 +48,6 @@ def parse_context_index(git_root: Path) -> list[tuple[str, str]]:
 
     section = section_match.group(1)
 
-    # Parse markdown table rows: | glob | file | description |
     mappings = []
     for line in section.splitlines():
         line = line.strip()
@@ -76,7 +64,6 @@ def parse_context_index(git_root: Path) -> list[tuple[str, str]]:
         context_file = file_cell.strip("`")
         if not context_file:
             continue
-        # Handle multiple globs in one cell: `a/**`, `b/**`, `c/**`
         raw_globs = [g.strip().strip("`") for g in glob_cell.split(",")]
         for glob_pattern in raw_globs:
             glob_pattern = glob_pattern.strip()
@@ -111,7 +98,6 @@ def get_modified_files(git_root: Path) -> list[str]:
     for line in result.stdout.strip().splitlines():
         if len(line) < 4:
             continue
-        # Status is first 2 chars, then space, then filename
         filename = line[3:].strip()
         if filename:
             files.append(filename)
@@ -157,7 +143,6 @@ def mode_auto(git_root: Path, mappings: list[tuple[str, str]]) -> None:
         print("No modified or staged files detected.", file=sys.stderr)
         sys.exit(0)
 
-    # Collect unique context files
     seen = set()
     context_files = []
     for filepath in modified:
@@ -188,7 +173,7 @@ def mode_list(mappings: list[tuple[str, str]]) -> None:
 
 
 def main():
-    git_root = find_git_root()
+    git_root = find_git_root(exit_on_error=False)
     mappings = parse_context_index(git_root)
 
     if len(sys.argv) < 2:

@@ -11,82 +11,16 @@ Requires: git in PATH.
 """
 
 import re
-import subprocess
 import sys
 from datetime import date
-from fnmatch import fnmatch
 from pathlib import Path
 
-FRESHNESS_PATTERN = re.compile(
-    r"(<!--\s*freshness\s*\n)(.*?)(\n\s*-->)",
-    re.DOTALL,
+from context_lib import (
+    FRESHNESS_PATTERN_GROUPS,
+    compute_hash,
+    find_git_root,
+    parse_watches,
 )
-
-
-def find_git_root() -> Path:
-    """Find the git repository root."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, check=True,
-        )
-        return Path(result.stdout.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print("Error: not inside a git repository", file=sys.stderr)
-        sys.exit(1)
-
-
-def parse_watches(block: str) -> list[str]:
-    """Extract watch glob patterns from a freshness marker block."""
-    watches = []
-    in_watches = False
-    for line in block.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("watches:"):
-            in_watches = True
-            continue
-        if in_watches:
-            if stripped.startswith("- "):
-                watches.append(stripped[2:].strip())
-            elif stripped and not stripped.startswith("-"):
-                break
-    return watches
-
-
-def compute_hash(git_root: Path, watch_globs: list[str]) -> str:
-    """Compute hash from git-tracked files matching watch globs."""
-    try:
-        result = subprocess.run(
-            ["git", "ls-files"],
-            capture_output=True, text=True, check=True,
-            cwd=git_root,
-        )
-        all_files = result.stdout.strip().splitlines()
-    except subprocess.CalledProcessError:
-        print("Error: git ls-files failed", file=sys.stderr)
-        sys.exit(1)
-
-    matched = set()
-    for f in all_files:
-        for glob_pattern in watch_globs:
-            if fnmatch(f, glob_pattern):
-                matched.add(f)
-                break
-
-    if not matched:
-        return "0000000"
-
-    sorted_files = "\n".join(sorted(matched)) + "\n"
-    try:
-        result = subprocess.run(
-            ["git", "hash-object", "--stdin"],
-            input=sorted_files, capture_output=True, text=True, check=True,
-            cwd=git_root,
-        )
-        return result.stdout.strip()[:7]
-    except subprocess.CalledProcessError:
-        print("Error: git hash-object failed", file=sys.stderr)
-        sys.exit(1)
 
 
 def main():
@@ -100,7 +34,7 @@ def main():
         sys.exit(1)
 
     content = filepath.read_text(encoding="utf-8")
-    match = FRESHNESS_PATTERN.search(content)
+    match = FRESHNESS_PATTERN_GROUPS.search(content)
 
     if not match:
         print(f"Error: no freshness marker found in {filepath}", file=sys.stderr)
@@ -118,13 +52,11 @@ def main():
     new_hash = compute_hash(git_root, watches)
     today = date.today().isoformat()
 
-    # Update watches_hash
     new_block = re.sub(
         r"watches_hash:\s*\S+",
         f"watches_hash: {new_hash}",
         block,
     )
-    # Update last_verified
     new_block = re.sub(
         r"last_verified:\s*\S+",
         f"last_verified: {today}",

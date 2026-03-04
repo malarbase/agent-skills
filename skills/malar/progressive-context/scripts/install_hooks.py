@@ -34,7 +34,7 @@ _POST_COMMIT_HOOK = """\
 # Context freshness check — warns if committed files affect context
 SCRIPTS_DIR="$(git rev-parse --show-toplevel)/scripts"
 if command -v python3 >/dev/null 2>&1 && [ -f "$SCRIPTS_DIR/context_check_watches.py" ]; then
-  git diff-tree --no-commit-id --name-only -r HEAD | xargs python3 "$SCRIPTS_DIR/context_check_watches.py" 2>/dev/null
+  git diff-tree --no-commit-id --name-only -r HEAD -z | xargs -0 python3 "$SCRIPTS_DIR/context_check_watches.py" 2>/dev/null
 fi
 """
 
@@ -47,7 +47,7 @@ if command -v python3 >/dev/null 2>&1 && [ -f "$SCRIPTS_DIR/context_audit.py" ];
 fi
 """
 
-_INLINE_HOOKS = {
+HOOK_CONTENT = {
     "post-commit": _POST_COMMIT_HOOK,
     "post-merge": _POST_MERGE_HOOK,
 }
@@ -72,8 +72,8 @@ def read_template(name: str) -> str:
     template_path = HOOK_TEMPLATES_DIR / name
     if template_path.exists():
         return template_path.read_text(encoding="utf-8")
-    if name in _INLINE_HOOKS:
-        return _INLINE_HOOKS[name]
+    if name in HOOK_CONTENT:
+        return HOOK_CONTENT[name]
     print(f"Error: hook template not found: {template_path}", file=sys.stderr)
     sys.exit(1)
 
@@ -259,7 +259,9 @@ def _remove_hook_file(hook_path: Path, hook_name: str) -> bool:
             return True
         if "SCRIPTS_DIR=" in line or "command -v python3" in line:
             return True
-        if "xargs python3" in line or "git diff-tree" in line:
+        if "xargs" in line and "python3" in line:
+            return True
+        if "git diff-tree" in line:
             return True
         if s.rstrip(";") in SHELL_SCAFFOLDING:
             return True
