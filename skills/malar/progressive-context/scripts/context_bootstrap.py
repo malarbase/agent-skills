@@ -14,83 +14,15 @@ Requires: git in PATH.
 """
 
 import os
-import re
-import subprocess
 import sys
-from datetime import date
-from fnmatch import fnmatch
 from pathlib import Path
 
-FRESHNESS_PATTERN = re.compile(
-    r"<!--\s*freshness\s*\n.*?\n\s*-->",
-    re.DOTALL,
+from context_lib import (
+    build_marker,
+    compute_hash,
+    find_git_root,
+    has_freshness_marker,
 )
-
-
-def find_git_root() -> Path:
-    """Find the git repository root."""
-    try:
-        result = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, check=True,
-        )
-        return Path(result.stdout.strip())
-    except (subprocess.CalledProcessError, FileNotFoundError):
-        print("Error: not inside a git repository", file=sys.stderr)
-        sys.exit(1)
-
-
-def compute_hash(git_root: Path, watch_globs: list[str]) -> str:
-    """Compute hash from git-tracked files matching watch globs."""
-    try:
-        result = subprocess.run(
-            ["git", "ls-files"],
-            capture_output=True, text=True, check=True,
-            cwd=git_root,
-        )
-        all_files = result.stdout.strip().splitlines()
-    except subprocess.CalledProcessError:
-        return "0000000"
-
-    matched = set()
-    for f in all_files:
-        for glob_pattern in watch_globs:
-            if fnmatch(f, glob_pattern):
-                matched.add(f)
-                break
-
-    if not matched:
-        return "0000000"
-
-    sorted_files = "\n".join(sorted(matched)) + "\n"
-    try:
-        result = subprocess.run(
-            ["git", "hash-object", "--stdin"],
-            input=sorted_files, capture_output=True, text=True, check=True,
-            cwd=git_root,
-        )
-        return result.stdout.strip()[:7]
-    except subprocess.CalledProcessError:
-        return "0000000"
-
-
-def has_freshness_marker(content: str) -> bool:
-    """Check if content already contains a freshness marker."""
-    return bool(FRESHNESS_PATTERN.search(content))
-
-
-def build_marker(watches_hash: str, watch_globs: list[str]) -> str:
-    """Build a freshness marker HTML comment."""
-    today = date.today().isoformat()
-    watches_lines = "\n".join(f"  - {g}" for g in watch_globs)
-    return (
-        f"\n<!-- freshness\n"
-        f"watches_hash: {watches_hash}\n"
-        f"last_verified: {today}\n"
-        f"watches:\n"
-        f"{watches_lines}\n"
-        f"-->\n"
-    )
 
 
 def add_marker(filepath: Path, watch_globs: list[str]) -> None:
@@ -105,7 +37,6 @@ def add_marker(filepath: Path, watch_globs: list[str]) -> None:
     watches_hash = compute_hash(git_root, watch_globs)
     marker = build_marker(watches_hash, watch_globs)
 
-    # Append marker to end of file
     if not content.endswith("\n"):
         content += "\n"
     content += marker

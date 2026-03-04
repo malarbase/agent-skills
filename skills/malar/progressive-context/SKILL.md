@@ -1,7 +1,7 @@
 ---
 name: progressive-context
 description: Manages AI context files (CLAUDE.md, AGENTS.md, .cursor/rules/, skills)
-  with progressive disclosure layers and hash-based freshness tracking. Bootstraps
+  with progressive disclosure layers and content-aware freshness tracking. Bootstraps
   context structure in new projects, audits existing context for staleness via git
   hooks, and stamps files after review. Use when setting up context management, auditing
   freshness, restructuring CLAUDE.md for progressive disclosure, or when git hooks
@@ -10,17 +10,17 @@ description: Manages AI context files (CLAUDE.md, AGENTS.md, .cursor/rules/, ski
 metadata:
   author: malar
   tags:
-  - progressive
   - context
-  - curated
+  - freshness
+  - progressive-disclosure
+  - agent-context
 ---
 
 # Progressive Context
 
-Manage AI context files (CLAUDE.md, AGENTS.md, .cursor/rules/, skill files) with
-progressive disclosure and automatic freshness tracking. Context files watch the
-source code they document — when source changes, stale context surfaces
-automatically via git hooks.
+Manage AI context files with progressive disclosure and automatic freshness
+tracking. Context files watch the source code they document — when source
+changes, stale context surfaces automatically via git hooks.
 
 ## Concepts
 
@@ -49,48 +49,103 @@ watches:
 -->
 ```
 
-When watched files change, the stored hash becomes stale. Git hooks surface
-warnings at commit time so context stays current.
+The hash is **content-aware** — computed from git blob hashes of watched files
+via `git ls-files -s`. It changes when file content changes, not just when files
+are added or removed.
 
-See `references/freshness-format.md` for the full format specification.
+See [references/freshness-format.md](references/freshness-format.md) for the
+full format specification.
+
+---
+
+## Gotchas
+
+Hard-won lessons. Read before running any workflow.
+
+### 1. Always copy `context_lib.py`
+
+All `context_*.py` scripts import from `context_lib.py`. If you copy scripts to
+a project without it, they will fail with `ModuleNotFoundError`.
+
+```bash
+# WRONG — missing shared module
+cp scripts/context_audit.py project/scripts/
+
+# RIGHT — always include context_lib.py
+cp scripts/context_lib.py scripts/context_*.py project/scripts/
+```
+
+### 2. Watch globs must match real directory names
+
+Monorepos often prefix package directories (e.g., `floorplan-language/` not
+`language/`). If your Context Index or watch globs use the wrong name,
+routing and freshness tracking silently fail.
+
+**Verify before writing globs:**
+```bash
+ls -d */   # Check actual directory names on disk
+```
+
+### 3. `fnmatch` treats `*` and `**` identically
+
+Python's `fnmatch` does not treat `/` as special — `*` matches across directory
+boundaries just like `**`. We standardize on `**` by convention so intent is
+clear and code remains compatible if the matching engine ever changes.
+
+```
+floorplan-app/src/routes/**    # GOOD — convention says "recursive"
+floorplan-app/src/routes/*     # WORKS but misleading
+```
+
+### 4. Keep CLAUDE.md and AGENTS.md in sync
+
+If both files exist with the same content, edits to one must be mirrored in the
+other. They serve different agent systems (Claude Code vs Cursor/other agents).
+
+### 5. Hook scripts must handle special filenames
+
+Use NUL-delimited output (`-z`) with `xargs -0` to handle filenames containing
+spaces or special characters:
+
+```sh
+# WRONG — breaks on "my file.ts"
+git diff-tree --name-only -r HEAD | xargs python3 script.py
+
+# RIGHT
+git diff-tree --name-only -r HEAD -z | xargs -0 python3 script.py
+```
 
 ---
 
 ## Workflows
 
-### Workflow A: `setup` — Bootstrap Progressive Context in a New Project
+### Workflow A: `setup` — Bootstrap in a New Project
 
-Use this when starting fresh or adding context management to an existing project.
-
-**Steps:**
-
-1. **Scan existing context files** — Run `context_bootstrap.py --scan` on the
-   project root to find all `.md` files that could benefit from freshness tracking.
-
-2. **Analyze project structure** — Examine the codebase to understand which source
-   directories each context file documents. Propose watch globs for each.
-
-3. **Propose disclosure layers** — Categorize context files into the four layers
-   (Always / Path-triggered / On-demand / Reference). Suggest moving verbose
-   sections from CLAUDE.md into path-triggered or reference files.
-
-4. **Copy scripts to the project**:
+1. **Scan existing context files:**
    ```bash
-   cp ~/.cursor/skills/progressive-context/scripts/*.py scripts/
-   chmod +x scripts/context_*.py scripts/install_hooks.py
+   python3 scripts/context_bootstrap.py --scan .
    ```
 
-5. **Add freshness markers** — For each context file, run:
+2. **Analyze project structure** — determine which source directories each
+   context file documents. Propose watch globs. **Verify directory names** with
+   `ls -d */` before writing globs (see Gotcha #2).
+
+3. **Propose disclosure layers** — categorize context files into the four layers.
+   Suggest moving verbose sections from CLAUDE.md into reference files.
+
+4. **Copy scripts to the project** (include `context_lib.py`):
    ```bash
-   python3 scripts/context_bootstrap.py <context-file> "src/relevant/**" "other/glob.ts"
+   cp scripts/context_lib.py scripts/context_*.py scripts/install_hooks.py project/scripts/
+   chmod +x project/scripts/context_*.py project/scripts/install_hooks.py
    ```
 
-6. **Build a Context Index** — Add a `## Context Index` section to CLAUDE.md
-   mapping directory globs to context files. This enables `context_for.py` routing.
+5. **Add freshness markers:**
+   ```bash
+   python3 scripts/context_bootstrap.py <context-file> "my-pkg/src/**" "other/glob.ts"
+   ```
 
-   **Important:** Globs must match real directory names on disk (run `ls -d */` to
-   verify). Monorepos often use prefixed names (e.g., `my-app-language/` not
-   `language/`). Wrong globs cause silent routing failures.
+6. **Build a Context Index** in CLAUDE.md mapping directory globs to context
+   files. This enables `context_for.py` routing.
 
    ```markdown
    ## Context Index
@@ -101,7 +156,7 @@ Use this when starting fresh or adding context management to an existing project
    | `my-app-server/**` | `docs/context/server.md` |
    ```
 
-7. **Install git hooks** — Run:
+7. **Install git hooks:**
    ```bash
    python3 scripts/install_hooks.py
    ```
@@ -111,32 +166,22 @@ Use this when starting fresh or adding context management to an existing project
    python3 scripts/context_audit.py
    ```
 
-9. **Report token savings** — Compare the token count of the original monolithic
-   CLAUDE.md against the new always-loaded subset. Report the reduction.
+9. **Report token savings** — compare original monolithic CLAUDE.md token count
+   against the new always-loaded subset.
 
 ### Workflow B: `audit` — Check Context Freshness
 
-Use this periodically or when context might be stale.
-
-**Steps:**
-
-1. Run the audit script:
+1. Run the audit:
    ```bash
    python3 scripts/context_audit.py
    ```
 
-2. Read the report. For each `STALE` file:
-   - Open the context file and its watched source files
-   - Determine what changed and whether the context file needs updating
-   - Update the prose if needed
+2. For each `STALE` file: open the context file and its watched source, determine
+   what changed, update the prose if needed.
 
-3. After reviewing/updating, stamp the file (see Workflow C).
+3. After reviewing, stamp the file (Workflow C).
 
 ### Workflow C: `verify-and-stamp` — Update Freshness After Review
-
-Use this after manually reviewing a context file to confirm it's current.
-
-**Steps:**
 
 1. Verify the context file is accurate (read it, compare with source).
 
@@ -147,24 +192,18 @@ Use this after manually reviewing a context file to confirm it's current.
 
 3. Commit the updated hash so future audits use the new baseline.
 
-### Workflow D: `teardown` — Remove Progressive Context from a Project
+### Workflow D: `teardown` — Remove from a Project
 
-Use this to cleanly remove everything the skill installed.
-
-**Steps:**
-
-1. **Remove git hooks**:
+1. **Remove git hooks:**
    ```bash
    python3 scripts/install_hooks.py --uninstall
    ```
 
-2. **Strip freshness markers** from context files (optional — markers are inert
-   HTML comments, safe to leave). Run this **before** deleting context files:
+2. **Strip freshness markers** (optional — markers are inert HTML comments):
    ```bash
    python3 -c "
-   import re, sys, pathlib, glob as g
-   files = g.glob('docs/context/*.md') + g.glob('.cursor/rules/*.md')
-   for f in files:
+   import re, pathlib, glob as g
+   for f in g.glob('docs/context/*.md') + g.glob('.cursor/rules/*.md'):
        p = pathlib.Path(f)
        text = p.read_text()
        cleaned = re.sub(r'\n?<!-- freshness\n.*?-->\n?', '', text, flags=re.DOTALL)
@@ -174,45 +213,15 @@ Use this to cleanly remove everything the skill installed.
    "
    ```
 
-3. **Remove context files** (optional — only if reverting to monolithic CLAUDE.md):
+3. **Remove context scripts:**
    ```bash
-   rm -rf docs/context/
-   # Remove only the rules this skill created (check contents first)
-   ls .cursor/rules/
-   rm -f .cursor/rules/<your-rule-files>.md
+   rm -f scripts/context_lib.py scripts/context_audit.py \
+         scripts/context_update_hash.py scripts/context_bootstrap.py \
+         scripts/context_check_watches.py scripts/context_for.py \
+         scripts/install_hooks.py
    ```
 
-4. **Remove context scripts** from the project:
-   ```bash
-   rm -f scripts/context_audit.py scripts/context_update_hash.py \
-         scripts/context_bootstrap.py scripts/context_check_watches.py \
-         scripts/context_for.py scripts/install_hooks.py
-   ```
-
-5. **Remove the Context Index** section from CLAUDE.md and AGENTS.md if present.
-
-The `docs/context/` files and `.cursor/rules/` are useful independently of the
-freshness system — consider keeping them even after removing the automation.
-
----
-
-## Quick Start for Any Agent
-
-After running Workflow A (`setup`), scripts live in the project's `scripts/` directory.
-If scripts haven't been copied yet, use the skill directory as the source.
-
-```bash
-# Use project-local scripts (preferred — after setup)
-python3 scripts/context_audit.py
-python3 scripts/context_update_hash.py .cursor/rules/my-rule.md
-python3 scripts/context_for.py --auto
-
-# Or use the skill directory directly (before setup / bootstrapping)
-SKILL_DIR="$HOME/.cursor/skills/progressive-context/scripts"
-python3 "$SKILL_DIR/context_bootstrap.py" --scan .
-python3 "$SKILL_DIR/context_bootstrap.py" CLAUDE.md "src/**/*.ts" "package.json"
-python3 "$SKILL_DIR/install_hooks.py"
-```
+4. **Remove the Context Index** section from CLAUDE.md and AGENTS.md if present.
 
 ---
 
@@ -220,9 +229,14 @@ python3 "$SKILL_DIR/install_hooks.py"
 
 | Script | Purpose |
 |--------|---------|
+| `context_lib.py` | Shared module — all scripts import from this |
 | `context_audit.py` | Scan all context files, report stale vs current |
 | `context_update_hash.py` | Stamp a file's freshness hash after review |
 | `context_bootstrap.py` | Add freshness markers to new or existing files |
 | `context_check_watches.py` | Fast check if changed files affect any context (for hooks) |
 | `context_for.py` | Look up which context file covers a given source file |
-| `install_hooks.py` | Install (`--uninstall` to remove) git hooks for automatic checks |
+| `install_hooks.py` | Install/uninstall git hooks for automatic checks |
+
+## Additional Resources
+
+- For the freshness marker format spec, see [references/freshness-format.md](references/freshness-format.md)
