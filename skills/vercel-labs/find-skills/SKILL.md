@@ -105,8 +105,23 @@ npx skills add <owner/repo@skill> -g -y
 
 The `-g` flag installs globally (user-level) and `-y` skips confirmation prompts.
 
-## Common Skill Categories
+## Post-Install Metadata
 
+After installing a skill, its `SKILL.md` should have `metadata.author`,
+`metadata.repo`, and `metadata.tags` in the frontmatter. Skills from the curated
+registry already carry these fields — the curator stamps them at publish time.
+
+For skills installed via `npx skills add` from arbitrary repos, stamp any missing
+fields using the bundled script:
+
+```bash
+python scripts/stamp-metadata.py <installed-skill-path> --author <github-owner> --repo github.com/<owner>/<repo>
+```
+
+The script only populates absent fields — it never overwrites values already present.
+Tags are derived from the skill directory name if `--tags` is not provided.
+
+## Common Skill Categories
 When searching, consider these common categories:
 
 | Category        | Example Queries                          |
