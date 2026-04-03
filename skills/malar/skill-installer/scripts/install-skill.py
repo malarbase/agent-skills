@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 from editor_detection import detect_editor, EditorConfig
 from github_utils import github_request
+from metadata_utils import ensure_metadata
 
 DEFAULT_REF = "main"
 DEFAULT_REPO = "anthropics/skills"
@@ -487,6 +488,10 @@ def main(argv: list[str]) -> int:
                 skill_src = os.path.join(repo_root, path)
                 _validate_skill(skill_src)
                 _copy_skill(skill_src, dest_dir)
+                # Stamp metadata into the installed SKILL.md if absent.
+                # source_repo is only set for GitHub-sourced installs.
+                source_repo = f"github.com/{source.owner}/{source.repo}"
+                ensure_metadata(dest_dir, author=source.owner, source_repo=source_repo)
                 installed.append((skill_name, dest_dir))
         finally:
             if os.path.isdir(tmp_dir):

@@ -284,3 +284,80 @@ def filter_skills_by_metadata(
             matching.append(skill_name)
     
     return matching
+
+
+
+# Fields that are sometimes placed at the top level but belong under metadata:
+_FIELDS_TO_MIGRATE = {"author", "repo", "tags", "displayName", "version"}
+
+
+def ensure_metadata(
+    path: str,
+    author: str,
+    source_repo: str | None = None,
+    tags: list[str] | None = None,
+) -> None:
+    """Stamp metadata.author, metadata.repo, metadata.tags into an installed SKILL.md.
+
+    Only populates fields that are absent — never overwrites values already present.
+    Also migrates any top-level author/repo/tags fields into the metadata: block.
+    """
+    import yaml
+
+    skill_md = os.path.join(path, "SKILL.md")
+    if not os.path.isfile(skill_md):
+        return
+
+    with open(skill_md, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    import re
+    match = re.match(r"^---\n(.*?)\n---\n?(.*)", content, re.DOTALL)
+    if not match:
+        return
+
+    try:
+        fm = yaml.safe_load(match.group(1))
+        if not isinstance(fm, dict):
+            return
+    except yaml.YAMLError:
+        return
+
+    body = match.group(2)
+
+    # Migrate top-level fields into metadata:
+    metadata: dict = fm.get("metadata", {}) or {}
+    for field in _FIELDS_TO_MIGRATE:
+        if field in fm:
+            metadata[field] = fm.pop(field)
+
+    # Populate only missing fields
+    if "author" not in metadata:
+        metadata["author"] = author
+    if source_repo and "repo" not in metadata:
+        metadata["repo"] = source_repo
+    if "tags" not in metadata:
+        if tags:
+            metadata["tags"] = tags
+        else:
+            # Derive minimal tags from the skill name
+            skill_name = os.path.basename(path.rstrip("/"))
+            parts = skill_name.split("-")
+            derived = parts[:3] if len(parts) > 3 else parts
+            seen: set[str] = set()
+            unique: list[str] = []
+            for t in derived:
+                if t not in seen:
+                    seen.add(t)
+                    unique.append(t)
+            metadata["tags"] = unique
+
+    fm["metadata"] = metadata
+
+    fm_text = yaml.dump(
+        fm, default_flow_style=False, sort_keys=False, allow_unicode=True
+    ).rstrip()
+    new_content = f"---\n{fm_text}\n---\n{body}"
+
+    with open(skill_md, "w", encoding="utf-8") as f:
+        f.write(new_content)
